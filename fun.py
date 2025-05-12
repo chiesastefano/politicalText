@@ -136,6 +136,46 @@ def split_speech_into_segments(speech):
     return segments
 
 
+def merge_lowercase_speeches(speeches: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merge rows where 'Speech' starts with a lowercase letter or any dash
+    (-, –, —) into the previous row, preserving other columns from the most
+    recent valid row.
+
+    Parameters:
+    - speeches: pd.DataFrame with at least a column named 'Speech'.
+
+    Returns:
+    - pd.DataFrame with merged rows and all original columns.
+    """
+    # Match lowercase letters OR -, –, —
+    starts_with_merge = speeches['Speech'].str.match(r'^[a-z\-–—]')
+    merged_rows = []
+    buffer_speech = ""
+    current_row = None
+
+    for is_merge, row in zip(starts_with_merge, speeches.itertuples(index=False)):
+        if is_merge:
+            buffer_speech += " " + row.Speech
+        else:
+            if buffer_speech and current_row is not None:
+                current_row = current_row._replace(Speech=current_row.Speech + buffer_speech)
+                merged_rows.append(current_row)
+                buffer_speech = ""
+            else:
+                if current_row is not None:
+                    merged_rows.append(current_row)
+            current_row = row
+
+    if buffer_speech and current_row is not None:
+        current_row = current_row._replace(Speech=current_row.Speech + buffer_speech)
+        merged_rows.append(current_row)
+    elif current_row is not None:
+        merged_rows.append(current_row)
+
+    return pd.DataFrame(merged_rows, columns=speeches.columns)
+
+
 def get_top_emotion(text, classifier):
     """
     Classify the top emotion in a text snippet using a HuggingFace pipeline classifier.
@@ -150,4 +190,3 @@ def get_top_emotion(text, classifier):
     result = classifier(text)[0]  # No need to truncate manually
     top = max(result, key=lambda x: x['score'])
     return pd.Series([top['label'], top['score']])
-
