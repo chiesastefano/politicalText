@@ -50,3 +50,8 @@ def process_debate_transcripts(input_dir, output_dir):
         df.to_csv(output_file, index=False)
 
         print(f"Processed: {txt_file.name} → {output_file.name}")
+
+def get_top_emotion(text, classifier):
+    result = classifier(text[:512])[0]  # Limit to 512 tokens
+    top = max(result, key=lambda x: x['score'])
+    return pd.Series([top['label'], top['score']])
