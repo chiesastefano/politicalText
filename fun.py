@@ -190,3 +190,52 @@ def get_top_emotion(text, classifier):
     result = classifier(text)[0]  # No need to truncate manually
     top = max(result, key=lambda x: x['score'])
     return pd.Series([top['label'], top['score']])
+
+
+def compute_relative_emotion_frequency(
+        df,
+        speaker=None,
+        emotion=None,
+        year=None,
+        location=None,
+        emotion_col="emotion",
+        democrat=0
+):
+    """
+    Compute the relative frequency of each emotion (or grouped_emotion) for each year, speaker, and location,
+    then optionally filter the output for display.
+
+    Parameters:
+    - df (pd.DataFrame): DataFrame with at least 'Year', 'Speaker', 'Location', and emotion columns.
+    - speaker (str, optional): If provided, filter output by this speaker.
+    - emotion (str, optional): If provided, filter output by this emotion/grouped_emotion.
+    - year (str or int, optional): If provided, filter output by this year.
+    - location (str, optional): If provided, filter output by this location.
+    - emotion_col (str, optional): Column to use for emotion ('emotion' or 'grouped_emotion'). Default is 'emotion'.
+    - democrat (int, optional): If 1, only include rows where democrat==1.
+
+    Returns:
+    - pd.DataFrame: DataFrame with columns ['Year', 'Speaker', 'Location', emotion_col, 'relative_frequency'].
+    """
+    if democrat == 1:
+        df = df[df['democrat'] == 1]
+
+    group_cols = ['Year', 'Speaker', 'Location']
+    freq = (
+        df.groupby(group_cols)[emotion_col]
+        .value_counts(normalize=True)
+        .rename('relative_frequency')
+        .reset_index()
+    )
+
+    # Now apply filters for display only
+    if speaker is not None:
+        freq = freq[freq['Speaker'] == speaker]
+    if emotion is not None:
+        freq = freq[freq[emotion_col] == emotion]
+    if year is not None:
+        freq = freq[freq['Year'] == year]
+    if location is not None:
+        freq = freq[freq['Location'] == location]
+
+    return freq
