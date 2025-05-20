@@ -1,6 +1,12 @@
 import re
 import pandas as pd
 from pathlib import Path
+import matplotlib.pyplot as plt
+import seaborn as sns
+import spacy
+from collections import Counter
+import subprocess
+import sys
 
 
 def process_debate_transcripts(input_dir, output_dir):
@@ -239,3 +245,210 @@ def compute_relative_emotion_frequency(
         freq = freq[freq['Location'] == location]
 
     return freq
+
+
+def classify_speech_emotion(df, emotion=None, classifier=None):
+    # If an emotion is provided, filter by it; if not, use the entire dataset
+    if emotion:
+        filtered_speeches = df[df['grouped_emotion'] == emotion]
+    else:
+        filtered_speeches = df
+
+    # Create lists to store the results
+    labels = []
+    scores = []
+
+    # Iterate over the rows in the dataframe
+    for index, row in filtered_speeches.iterrows():
+        sentence = row['Speech']
+
+        # Classify the speech using the given classifier
+        result = classifier(sentence)
+
+        # Check if the result contains at least one entry
+        if result:
+            # Extract the label and score (confidence)
+            label = result[0]['label']
+            score = result[0]['score']
+
+            # Append the results to the lists
+            labels.append(label)
+            scores.append(score)
+        else:
+            # If result is empty, append None values
+            labels.append(None)
+            scores.append(None)
+
+    # Add the results as new columns to the dataframe
+    df['classified_label'] = labels
+    df['classification_score'] = scores
+
+    return df
+
+
+def plot_classified_label_frequencies(speeches_done, speaker, year, emotion):
+    """
+    Plot the relative frequencies of the 'classified_label' for a given speaker, year, and emotion.
+
+    Parameters:
+    - speeches_done (pd.DataFrame): DataFrame containing the speech data with columns 'Speaker', 'grouped_emotion', 'Year', and 'classified_label'.
+    - speaker (str): The speaker whose data to plot.
+    - year (int or str): The year to filter the data by.
+    - emotion (str): The emotion to filter the data by.
+
+    Returns:
+    - None: Displays a bar plot of the relative frequencies of classified labels.
+    """
+
+    # Filter the DataFrame based on the provided speaker, year, and emotion
+    filtered_speeches = speeches_done[
+        (speeches_done['Speaker'] == speaker) &
+        (speeches_done['Year'] == year) &
+        (speeches_done['grouped_emotion'] == emotion)
+        ]
+
+    # If no data is found after filtering, print a message and return
+    if filtered_speeches.empty:
+        print(f"No data found for {speaker} in {year} with emotion {emotion}.")
+        return
+
+    # Compute the relative frequencies of 'classified_label'
+    classified_label_freq = filtered_speeches['classified_label'].value_counts(normalize=True).reset_index()
+    classified_label_freq.columns = ['classified_label', 'relative_frequency']
+
+    # Plot the relative frequencies (updated code to avoid deprecation warning)
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x='relative_frequency', y='classified_label', data=classified_label_freq, hue='classified_label',
+                palette='viridis', legend=False)
+    plt.title(f'Relative Frequencies of Classified Labels for {speaker} ({year}) - Emotion: {emotion}')
+    plt.xlabel('Relative Frequency')
+    plt.ylabel('Classified Label')
+    plt.show()
+
+
+
+
+def plot_most_frequent_words(speeches_done, speaker, year, emotion=None, top_n=20):
+    """
+    Plot the most frequent non-stop words using spaCy for a given speaker, year, and optionally emotion.
+    """
+    # Ensure the spaCy model is available
+    try:
+        nlp = spacy.load("en_core_web_sm")
+    except OSError:
+        print("Model 'en_core_web_sm' not found. Downloading now...")
+        subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
+        print("Model downloaded successfully.")
+        nlp = spacy.load("en_core_web_sm")
+
+    # Filter speeches by speaker and year
+    filtered_speeches = speeches_done[
+        (speeches_done['Speaker'] == speaker) &
+        (speeches_done['Year'] == year)
+    ]
+
+    # Optionally filter by emotion
+    if emotion is not None:
+        filtered_speeches = filtered_speeches[filtered_speeches['grouped_emotion'] == emotion]
+
+    if filtered_speeches.empty:
+        print(f"No data found for {speaker} in {year}" + (f" with emotion {emotion}." if emotion else "."))
+        return
+
+    # Combine and process text
+    text = ' '.join(filtered_speeches["Speech"]).lower()
+    doc = nlp(text)
+
+    # Filter tokens
+    tokens = [
+        token.lemma_ for token in doc
+        if not token.is_stop # to remove stop words
+        and not token.is_punct # to remove punctuation
+        and not token.is_space # to remove spaces
+        and not token.like_num # to remove numbers
+        and len(token.text) > 2 # to remove short words
+    ]
+
+    word_freq = Counter(tokens)
+    most_common = word_freq.most_common(top_n)
+    freq_df = pd.DataFrame(most_common, columns=['word', 'frequency'])
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(y='word', x='frequency', data=freq_df, hue='word', palette='viridis', legend=False)
+    title_emotion = f" - Emotion: {emotion}" if emotion else ""
+    plt.title(f'Most Frequent Words for {speaker} ({year}){title_emotion}')
+    plt.xlabel('Frequency')
+    plt.ylabel('Word')
+    plt.show()
+
+
+def get_word_emotion_distribution(speeches_df, word, speaker=None, year=None, emotion=None):
+    """
+    Given a word, return the frequency distribution of grouped_emotion labels
+    in which the word appears in the speeches, optionally filtered by speaker, year, or emotion.
+    If emotion is specified, prints the sentences containing the word with that emotion.
+
+    Parameters:
+    - speeches_df (pd.DataFrame): DataFrame with 'Speech', 'grouped_emotion', 'Speaker', and 'Year' columns.
+    - word (str): The target word to analyze.
+    - speaker (str or None): Filter by speaker if specified.
+    - year (int or str or None): Filter by year if specified.
+    - emotion (str or None): If set, prints the sentences containing the word with that emotion.
+
+    Returns:
+    - pd.DataFrame: Emotion distribution for the word.
+    """
+    # Ensure spaCy model is installed
+    try:
+        nlp = spacy.load("en_core_web_sm")
+    except OSError:
+        subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
+        nlp = spacy.load("en_core_web_sm")
+
+    # Preprocess target word
+    target_doc = nlp(word.lower())
+    if not target_doc:
+        print("Invalid input word.")
+        return pd.DataFrame()
+    target_lemma = target_doc[0].lemma_
+
+    # Filter speeches
+    df = speeches_df.dropna(subset=["Speech", "grouped_emotion"])
+    if speaker:
+        df = df[df["Speaker"] == speaker]
+    if year:
+        df = df[df["Year"] == year]
+
+    # Count emotions where the word appears
+    emotion_counter = Counter()
+    matching_sentences = []
+
+    for _, row in df.iterrows():
+        doc = nlp(row["Speech"].lower())
+        lemmas = {token.lemma_ for token in doc
+                  if not token.is_stop and not token.is_punct and not token.like_num and len(token.text) > 2}
+
+        if target_lemma in lemmas:
+            label = row["grouped_emotion"]
+            emotion_counter[label] += 1
+
+            # If user asked for sentences with a specific emotion
+            if emotion is not None and label == emotion:
+                for sent in doc.sents:
+                    if target_lemma in {token.lemma_ for token in sent}:
+                        matching_sentences.append(sent.text.strip())
+
+    # Print matching sentences if requested
+    if emotion is not None and matching_sentences:
+        print(f"\nSentences containing the word '{word}' in speeches labeled with emotion '{emotion}':\n")
+        for sentence in matching_sentences:
+            print(f"- {sentence}")
+
+    # Return emotion distribution
+    result_df = pd.DataFrame(emotion_counter.items(), columns=["Emotion", "Frequency"])
+    result_df.sort_values("Frequency", ascending=False, inplace=True)
+    return result_df
+
+
+
+
