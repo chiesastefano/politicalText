@@ -7,6 +7,9 @@ import spacy
 from collections import Counter
 import subprocess
 import sys
+import torch
+import shap
+from transformers import pipeline
 
 
 def process_debate_transcripts(input_dir, output_dir):
@@ -434,9 +437,7 @@ def get_word_emotion_distribution(speeches_df, word, speaker=None, year=None, em
 
             # If user asked for sentences with a specific emotion
             if emotion is not None and label == emotion:
-                for sent in doc.sents:
-                    if target_lemma in {token.lemma_ for token in sent}:
-                        matching_sentences.append(sent.text.strip())
+                matching_sentences.append(row["Speech"].strip())
 
     # Print matching sentences if requested
     if emotion is not None and matching_sentences:
@@ -450,5 +451,75 @@ def get_word_emotion_distribution(speeches_df, word, speaker=None, year=None, em
     return result_df
 
 
+def analyze_emotions_with_attention(sentence, model, tokenizer, emotion_map=None):
+    """
+    Analyze emotions in a sentence using a transformer model.
+    Displays top predicted emotions, attention heatmap, and SHAP token importance.
 
+    Parameters
+    ----------
+    sentence : str
+        Input sentence.
+    model : transformers.PreTrainedModel
+        Hugging Face model for emotion classification.
+    tokenizer : transformers.PreTrainedTokenizer
+        Corresponding tokenizer.
+    emotion_map : dict, optional
+        Optional mapping of raw emotions to broader categories.
 
+    Returns
+    -------
+    None
+    """
+
+    # Get emotion labels
+    id2label = model.config.id2label
+
+    # Tokenize input
+    inputs = tokenizer(sentence, return_tensors="pt")
+    device = next(model.parameters()).device
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+    # Forward pass to get predictions and attentions
+    with torch.no_grad():
+        outputs = model(**inputs, output_attentions=True)
+        attentions = outputs.attentions
+        logits = outputs.logits
+
+    # Top-5 predicted emotions
+    probs = torch.softmax(logits, dim=1)[0]
+    topk = torch.topk(probs, k=5)
+
+    print("Top predicted emotions:")
+    for score, idx in zip(topk.values, topk.indices):
+        raw_emotion = id2label[idx.item()]
+        mapped_emotion = emotion_map.get(raw_emotion, raw_emotion) if emotion_map else raw_emotion
+        print(f"{raw_emotion} -> {mapped_emotion}: {score.item():.3f}")
+
+    # Attention heatmap
+    last_layer_attention = attentions[-1][0]  # (num_heads, seq_len, seq_len)
+    attention_weights = last_layer_attention[0].detach().cpu().numpy()  # first head
+    tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
+    labeled_tokens = [f"{i}:{tok}" for i, tok in enumerate(tokens)]
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(attention_weights, xticklabels=labeled_tokens, yticklabels=labeled_tokens, cmap="viridis")
+    plt.title("Attention heatmap (last layer, head 0)")
+    plt.xticks(rotation=45)
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+    plt.show()
+
+    # --- SHAP token attribution ---
+    print("\nRunning SHAP analysis (this may take a few seconds)...")
+
+    # Build a pipeline for shap
+    clf_pipeline = pipeline("text-classification", model=model, tokenizer=tokenizer, top_k=None)
+
+    # Create SHAP explainer
+    explainer = shap.Explainer(clf_pipeline)
+
+    # Run SHAP on the sentence
+    shap_values = explainer([sentence])
+
+    # Plot SHAP explanation
+    shap.plots.text(shap_values[0])
