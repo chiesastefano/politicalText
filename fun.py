@@ -501,11 +501,14 @@ def analyze_emotions_with_attention(sentence, model, tokenizer, emotion_map=None
     tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
     labeled_tokens = [f"{i}:{tok}" for i, tok in enumerate(tokens)]
 
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(attention_weights, xticklabels=labeled_tokens, yticklabels=labeled_tokens, cmap="viridis")
-    plt.title("Attention heatmap (last layer, head 0)")
-    plt.xticks(rotation=45)
-    plt.yticks(rotation=0)
+    plt.figure(figsize=(16, 12))  # Larger figure for readability
+    sns.heatmap(attention_weights,
+                xticklabels=labeled_tokens,
+                yticklabels=labeled_tokens,
+                cmap="viridis")
+    plt.title("Attention heatmap (last layer, head 0)", fontsize=14)
+    plt.xticks(rotation=45, fontsize=10)
+    plt.yticks(rotation=0, fontsize=10)
     plt.tight_layout()
     plt.show()
 
