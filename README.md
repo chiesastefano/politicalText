@@ -1,35 +1,36 @@
-# politicalText
+# Project: politicalText
 
-**politicalText** is a project for analysing and interpreting political rhetoric using Natural Language Processing techniques. We work with real-world presidential debate transcripts to uncover patterns in emotional expression, rhetorical strategy, and persuasion, with a focus on explainable AI and interpretability.
+This project is part of the "Algorithms for Massive Data" course of the MSc in Data Science for Economics at the University of Milan (UNIMI).  
+It focuses on mining rhetorical and emotional patterns from political debate transcripts using NLP techniques and scalable analysis tools.
 
-## Project Goals
-
-- **Emotion & Rhetoric Analysis**: Investigate how political figures express emotions and use rhetorical devices during debates.
-- **Model Interpretability**: Apply interpretability techniques to NLP models to understand which textual elements drive predictions.
-- **Text Mining at Scale**: Use scalable text-analytics methods to extract persuasive patterns from large corpora of political speech.
+**Student**: Stefano Chiesa  
+**Professor**: Alfio Ferrara
 
 ---
 
-## Repository Structure
+## Abstract
 
-```bash
-politicalText/
-│
-├── .idea/                          # IDE configuration files (can be ignored)
-├── .ipynb_checkpoints/            # Jupyter checkpoints (auto-generated)
-├── __pycache__/                   # Python bytecode cache
-│
-├── data/                          # Raw and preprocessed data
-├── transcripts/                   # Debate transcripts and scraped text
-├── png/                           # Output plots and visualisations
-│
-├── AUnified Approach to Interpreting Model Predictions.pdf
-├── Rhetoric Mining A New Text-Analytics Approach forQuantifying Persuasion.pdf
-├── Transformer Interpretability Beyond Attention Visualization.pdf
-│                                   # Reference papers for interpretability and rhetoric analysis
-│
-├── sample.ipynb                   # Exploratory analysis and prototyping notebook
-├── fun.py                         # Core functions for text processing and analysis
-├── requirements.txt               # Python dependencies
-├── .gitattributes
-├── README.md                      # Project documentation (this file)
+This project investigates the use of emotion and rhetorical strategies in U.S. presidential debates. Starting from raw transcripts, a pipeline for text preprocessing, emotion classification, and visualisation was developed. The analysis incorporates transformer-based models and interpretable machine learning techniques to extract and analyse persuasive language over time. The ultimate goal is to understand how candidates strategically deploy emotion to influence audiences, with particular attention to temporal and speaker-level patterns.
+
+---
+
+## Contents
+
+### Code
+
+- `fun.py`: core Python script containing utility functions
+- `sample.ipynb`: a Jupyter Notebook that illustrates how the functions are used for data exploration and visualisation.
+
+### Data
+
+- `/transcripts/`: raw debate transcripts scraped and preprocessed.
+- `/data/`: intermediate cleaned data used for analysis (e.g., tokenised text, labelled emotion data).
+- `/png/`: visualisations generated for the report.
+
+### Literature and References
+
+- `/papers_sources/`: includes relevant academic sources used to guide the methodology and interpret results
+### Others
+
+- `requirements.txt`: list of Python packages required to run the project
+
