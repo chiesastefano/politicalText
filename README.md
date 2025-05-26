@@ -1,7 +1,6 @@
 # Project: politicalText
 
-This project is part of the "Algorithms for Massive Data" course of the MSc in Data Science for Economics at the University of Milan (UNIMI).  
-It focuses on mining rhetorical and emotional patterns from political debate transcripts using NLP techniques and scalable analysis tools.
+This project is part of the "Text Mining and Sentiment Analysis" course of the MSc in Data Science for Economics at the University of Milan (UNIMI).
 
 **Student**: Stefano Chiesa  
 **Professor**: Alfio Ferrara
