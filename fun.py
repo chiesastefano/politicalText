@@ -131,7 +131,7 @@ def split_speech_into_segments(speech):
             if chunk:
                 current_segment = " ".join(chunk)
         else:
-            # Check if adding the sentence would exceed the 30-word segment limit
+            # Check if adding the sentence would exceed the 35-word segment limit
             potential_segment = current_segment + (" " if current_segment else "") + sentence
             if len(potential_segment.split()) > 35:
                 segments.append(current_segment)
