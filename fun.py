@@ -201,6 +201,45 @@ def get_top_emotion(text, classifier):
     return pd.Series([top['label'], top['score']])
 
 
+def classify_speech_emotion(df, emotion=None, classifier=None):
+    # If an emotion is provided, filter by it; if not, use the entire dataset
+    if emotion:
+        filtered_speeches = df[df['grouped_emotion'] == emotion]
+    else:
+        filtered_speeches = df
+
+    # Create lists to store the results
+    labels = []
+    scores = []
+
+    # Iterate over the rows in the dataframe
+    for index, row in filtered_speeches.iterrows():
+        sentence = row['Speech']
+
+        # Classify the speech using the given classifier
+        result = classifier(sentence)
+
+        # Check if the result contains at least one entry
+        if result:
+            # Extract the label and score (confidence)
+            label = result[0]['label']
+            score = result[0]['score']
+
+            # Append the results to the lists
+            labels.append(label)
+            scores.append(score)
+        else:
+            # If result is empty, append None values
+            labels.append(None)
+            scores.append(None)
+
+    # Add the results as new columns to the dataframe
+    df['classified_label'] = labels
+    df['classification_score'] = scores
+
+    return df
+
+
 def compute_relative_emotion_frequency(
         df,
         speaker=None,
@@ -248,45 +287,6 @@ def compute_relative_emotion_frequency(
         freq = freq[freq['Location'] == location]
 
     return freq
-
-
-def classify_speech_emotion(df, emotion=None, classifier=None):
-    # If an emotion is provided, filter by it; if not, use the entire dataset
-    if emotion:
-        filtered_speeches = df[df['grouped_emotion'] == emotion]
-    else:
-        filtered_speeches = df
-
-    # Create lists to store the results
-    labels = []
-    scores = []
-
-    # Iterate over the rows in the dataframe
-    for index, row in filtered_speeches.iterrows():
-        sentence = row['Speech']
-
-        # Classify the speech using the given classifier
-        result = classifier(sentence)
-
-        # Check if the result contains at least one entry
-        if result:
-            # Extract the label and score (confidence)
-            label = result[0]['label']
-            score = result[0]['score']
-
-            # Append the results to the lists
-            labels.append(label)
-            scores.append(score)
-        else:
-            # If result is empty, append None values
-            labels.append(None)
-            scores.append(None)
-
-    # Add the results as new columns to the dataframe
-    df['classified_label'] = labels
-    df['classification_score'] = scores
-
-    return df
 
 
 def plot_classified_label_frequencies(speeches_done, speaker, year, emotion):
@@ -476,7 +476,7 @@ def analyze_emotions_with_attention(sentence, model, tokenizer, emotion_map=None
     id2label = model.config.id2label
 
     # Tokenize input
-    inputs = tokenizer(sentence, return_tensors="pt")
+    inputs = tokenizer(sentence, return_tensors="pt") #PyTorch tensors
     device = next(model.parameters()).device
     inputs = {k: v.to(device) for k, v in inputs.items()}
     # Forward pass to get predictions and attentions
