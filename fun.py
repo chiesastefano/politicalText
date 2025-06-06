@@ -27,7 +27,7 @@ def process_debate_transcripts(input_dir, output_dir):
     For each file:
     - Parses metadata from the filename (speakers, location, year)
     - Extracts dialogue lines (e.g., "CANDIDATE: ...")
-    - Cleans and segments speech into ≤30-word chunks without breaking sentence structure
+    - Cleans and segments speech into ≤35-word chunks without breaking sentence structure
     - Classifies unknown speakers as "Moderator"
     """
     input_path = Path(input_dir)
@@ -100,7 +100,7 @@ def split_speech_into_segments(speech):
     - speech (str): Full speech text.
 
     Returns:
-    - List[str]: Segments of the speech, each ≤30 words.
+    - List[str]: Segments of the speech, each ≤35 words.
     """
     # Split by sentence-ending punctuation followed by space and capital letter (or end of string)
     sentence_pattern = r'(?<=[.!?])\s+(?=[A-Z])|(?<=[.!?])$'
@@ -124,7 +124,7 @@ def split_speech_into_segments(speech):
 
             for word in words:
                 chunk.append(word)
-                if len(chunk) == 30:
+                if len(chunk) == 35:
                     segments.append(" ".join(chunk))
                     chunk = []
 
