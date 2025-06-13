@@ -67,7 +67,7 @@ def process_debate_transcripts(input_dir, output_dir):
             if speaker not in [speaker1, speaker2]:
                 speaker = "Moderator"
 
-            # Split speech into <=30 word segments while respecting sentence boundaries
+            # Split speech into <=35 word segments while respecting sentence boundaries
             segments = split_speech_into_segments(line)
 
             for segment in segments:
